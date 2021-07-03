@@ -1,0 +1,138 @@
+---
+title: "Rare event meta-analysis"
+author: "Akihiro Shiroshita"
+date: "2021/7/3"
+output: pdf_document
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+## Fixed effect model  
+1. Inverse variance: Not suitable for sparse data   
+2. Mantel-Haenszel: Odds ratio, risk ratio, risk difference. Revman 5 and "meta" package  
+3. Peto: Odds ratio (different from Peto odds ratio), suitable for sparse data  
+
+## Between-study variance    
+
+Between-study variance  
+1. DerSimonian-Laird: RevMan 5 and R "meta" package   
+2. Paule-Mandel  
+3. Restricted maximum-likelihood  
+4. Maximum-likelihood  
+5. Hunter=schmidt estimator  
+6. Sidik-Jonkman  
+7. Hedges  
+8. Empirical Bayes  
+9. Hartung-Knapp adjustment: new. preferred over the DerSimonian-Laird  
+
+## Analysis for Rare events  
+Default is "add selective".  
+1. Add 0.5 (or any other small increment) to all two-by-two tables regardless of zero
+cells (referred to as “add all”): "addincr = "TRUE""  
+
+2. Add 0.5 (or any other small increment) to all two-by-two tables only in the case
+of zero cell counts in one or more studies (referred to as “add all conditional”): "allincr = "TRUE""  
+
+3. Add 0.5 only to cell counts of corresponding two-by-two tables with zero cell
+counts (referred to as “add selective”)  
+
+4. Treatment arm continuity correction based on the number of observations in the
+two groups: "incr = "TACC"". The two increments incre and incre add up to 1. If both groups have equal sample size the increment is 0.5 in both groups. The idea of this continuity correction is to
+get less biased results if groups are severely unbalanced with respect to sample size.   
+
+## Other methods    
+I used the package "[gmeta](https://cran.r-project.org/web/packages/gmeta/gmeta.pdf)" .\
+Exact method1: Odds ratio
+Exact methods2: Risk difference 
+
+Further reading: @tian2009, @sutton2002
+
+## Data preparation
+
+```{r}
+library(tidyverse)
+df <- tibble(study = c("Beltran 2021",
+                       "Chaccour 2021",
+                       "Lopez-Medina 2021",
+                       "Niaee 2020",
+                       "Ravikirti 2021"),
+             author = c("Beltran",
+                        "Chaccour",
+                        "Lopez-Medina",
+                        "Niaee",
+                        "Ravikirti"),
+             year = c(2021, 2021, 2021, 2020, 2021),
+             ai = c(5, 0, 0, 4, 0),
+             n1i = c(36, 12, 200, 120, 57),
+             ci = c(6, 0, 1, 11, 4),
+             n2i = c(37, 12, 198, 60, 58))
+df %>% glimpse()
+```
+
+## No values added to zero
+
+```{r}
+library(meta)
+b1 <- metabin(ai,
+              n1i,
+              ci,
+              n2i,
+              data = df,
+              incr = 0,
+              method="Inverse",
+              sm="RD")
+summary(b1)
+forest(b1)
+```
+
+## 0.5 added to zero
+
+```{r}
+b2 <- metabin(ai,
+              n1i,
+              ci,
+              n2i,
+              data = df,
+              method="Inverse",
+              sm="RD")
+summary(b2)
+forest(b2)
+```
+## Risk ratio    
+Use"method = "MH"", and "sm = "OR"" for calculating odds-ratio.  
+```{r}
+b2_rr <- metabin(ai,
+              n1i,
+              ci,
+              n2i,
+              data = df,
+              method="Inverse",
+              sm="RR")
+summary(b2_rr)
+forest(b2_rr)
+```
+
+## Exact meta-analysis through confidence distribution framework
+
+When you calculate odds-ratio, use "exact1" instead of "exact2".
+
+```{r}
+library(gmeta)
+df_g <- df %>% 
+  select(-study, -author, -year)
+b3 <- gmeta(df_g,
+            gmi.type="2x2",
+            method="exact2",
+            ci.level = 0.95)
+summary(b3)  
+```
+  
+## References  
+
